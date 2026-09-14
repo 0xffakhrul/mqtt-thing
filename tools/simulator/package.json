@@ -1,0 +1,18 @@
+{
+  "name": "@mqtt-thing/simulator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@mqtt-thing/logger": "*",
+    "mqtt": "^5.15.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
+  }
+}

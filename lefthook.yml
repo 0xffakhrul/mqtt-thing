@@ -1,0 +1,20 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: no-main
+      run: |
+        if [ "$(git branch --show-current)" = "main" ]; then
+          echo "Commit on a branch, not main." && exit 1
+        fi
+
+    - name: lint
+      glob: "*.{ts,js,json,jsonc,css}"
+      run: node_modules/.bin/biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+pre-push:
+  jobs:
+    - name: typecheck
+      run: npm run typecheck
+    - name: test
+      run: npm test
