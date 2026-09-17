@@ -1,0 +1,15 @@
+FROM node:24-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY packages/logger/package.json ./packages/logger/
+COPY services/ingestion/package.json ./services/ingestion/
+COPY services/api/package.json ./services/api/
+COPY tools/simulator/package.json ./tools/simulator/
+
+RUN npm ci --ignore-scripts
+
+COPY . .
+
+CMD ["node", "--version"]
