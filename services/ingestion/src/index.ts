@@ -38,7 +38,13 @@ client.on('message', (topic, payload) => {
   }
 
   insertReadings(pool, parsed.readings)
-    .then((count) => logger.debug({ topic, count }, 'inserted readings'))
+    .then(({ inserted, duplicates }) => {
+      if (duplicates > 0) {
+        logger.info({ topic, inserted, duplicates }, 'dropped duplicate readings');
+        return;
+      }
+      logger.debug({ topic, inserted }, 'inserted readings');
+    })
     .catch((error: unknown) => logger.error({ err: error, topic }, 'insert failed'));
 });
 
