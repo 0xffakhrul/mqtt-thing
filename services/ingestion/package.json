@@ -11,7 +11,8 @@
   "dependencies": {
     "@mqtt-thing/logger": "*",
     "mqtt": "^5.15.2",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/pg": "^8.15.6",

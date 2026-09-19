@@ -26,6 +26,19 @@ services:
       - ./infra/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: npx node-pg-migrate up
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/app/migrations
+
   ingestion:
     build:
       context: .
@@ -38,6 +51,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       mosquitto:
         condition: service_started
     volumes:
@@ -55,6 +70,9 @@ services:
       SIM_TENANT_ID: ${SIM_TENANT_ID}
       SIM_DEVICE_ID: ${SIM_DEVICE_ID}
       SIM_INTERVAL_MS: ${SIM_INTERVAL_MS}
+      SIM_DUPLICATE_RATE: ${SIM_DUPLICATE_RATE}
+      SIM_DROP_RATE: ${SIM_DROP_RATE}
+      SIM_SKEW_MS: ${SIM_SKEW_MS}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       mosquitto:

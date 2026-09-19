@@ -44,17 +44,20 @@ describe('parseTelemetry', () => {
 
   it.each([
     ['not json at all', 'payload is not valid JSON'],
-    [JSON.stringify([1, 2, 3]), 'payload is not a JSON object'],
+    [JSON.stringify([1, 2, 3]), 'expected object, received array'],
     [JSON.stringify({ ts: '2026-09-12T04:21:00.000Z', readings: { t: 1 } }), 'seq'],
     [JSON.stringify({ seq: 1, ts: 'yesterday', readings: { t: 1 } }), 'ts'],
-    [JSON.stringify({ seq: 1, ts: '2026-09-12T04:21:00.000Z', readings: {} }), 'empty'],
+    [
+      JSON.stringify({ seq: 1, ts: '2026-09-12T04:21:00.000Z', readings: {} }),
+      'at least one reading',
+    ],
     [
       JSON.stringify({
         seq: 1,
         ts: '2026-09-12T04:21:00.000Z',
         readings: { t: 'hot' },
       }),
-      'finite',
+      'readings.t',
     ],
   ])('rejects malformed payload %#', (payload, expected) => {
     const result = parseTelemetry(topic, payload);
