@@ -82,6 +82,26 @@ services:
       - ./services:/app/services
       - ./tools:/app/tools
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: npm run dev --workspace @mqtt-thing/api
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${API_PORT}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./packages:/app/packages
+      - ./services:/app/services
+      - ./tools:/app/tools
 volumes:
   postgres-data:
   mosquitto-data:
