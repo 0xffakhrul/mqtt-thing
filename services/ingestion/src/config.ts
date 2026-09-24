@@ -8,5 +8,6 @@ const required = (name: string): string => {
 
 export const config = {
   mqttUrl: required('MQTT_URL'),
+  redisUrl: required('REDIS_URL'),
   databaseUrl: required('DATABASE_URL'),
 } as const;

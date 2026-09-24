@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mqtt-thing/logger": "*",
+    "ioredis": "^6.0.0",
     "mqtt": "^5.15.2",
     "pg": "^8.23.0",
     "zod": "^4.6.5"

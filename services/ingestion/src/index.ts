@@ -3,6 +3,7 @@ import { createLogger } from '@mqtt-thing/logger';
 import mqtt from 'mqtt';
 import { config } from './config.js';
 import { createPool, insertReadings } from './db.js';
+import { channelFor, createPublisher, toEvent } from './events.js';
 import { parseTelemetry } from './telemetry.js';
 
 const logger = createLogger('ingestion');
@@ -43,9 +44,18 @@ client.on('message', (topic, payload) => {
         logger.info({ topic, inserted, duplicates }, 'dropped duplicate readings');
         return;
       }
+
+      const event = toEvent(parsed.readings);
+      if (event !== null) {
+        void publisher.publish(channelFor(event.tenantId), JSON.stringify(event));
+      }
+
       logger.debug({ topic, inserted }, 'inserted readings');
     })
     .catch((error: unknown) => logger.error({ err: error, topic }, 'insert failed'));
+
+  const publisher = createPublisher(config.redisUrl);
+  publisher.on('error', (error) => logger.error({ err: error }, 'redis error'));
 });
 
 const shutdown = (signal: string): void => {

@@ -1,3 +1,4 @@
+import websocket from '@fastify/websocket';
 import { createLogger } from '@mqtt-thing/logger';
 import Fastify from 'fastify';
 import pg from 'pg';
@@ -5,12 +6,16 @@ import { z } from 'zod';
 import { config } from './config.js';
 import { bucketFor } from './downsample.js';
 import { listDevices, readSeries } from './queries.js';
+import { registerStream } from './stream.js';
 
 const { Pool } = pg;
 
 const logger = createLogger('api');
 const pool = new Pool({ connectionString: config.databaseUrl });
 const app = Fastify({ loggerInstance: logger });
+
+await app.register(websocket);
+registerStream(app, config.redisUrl, logger);
 
 const TenantQuery = z.object({ tenantId: z.string().min(1) });
 

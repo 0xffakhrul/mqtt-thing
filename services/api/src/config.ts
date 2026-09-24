@@ -8,5 +8,6 @@ const required = (name: string): string => {
 
 export const config = {
   databaseUrl: required('DATABASE_URL'),
+  redisUrl: required('REDIS_URL'),
   port: Number(process.env.PORT ?? 3000),
 } as const;
