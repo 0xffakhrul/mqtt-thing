@@ -28,3 +28,29 @@ export const toEvent = (readings: Reading[]): ReadingEvent | null => {
     readings: values,
   };
 };
+
+export const latestKeyFor = (tenantId: string): string => `latest:${tenantId}`;
+
+const SET_IF_NEWER = `
+local current = redis.call('HGET', KEYS[1], ARGV[1])
+if current then
+  local currentTs = cjson.decode(current)['ts']
+  if currentTs >= ARGV[2] then
+    return 0
+  end
+end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[3])
+return 1
+`;
+
+export const storeLatest = async (redis: Redis, event: ReadingEvent): Promise<boolean> => {
+  const updated = await redis.eval(
+    SET_IF_NEWER,
+    1,
+    latestKeyFor(event.tenantId),
+    event.deviceId,
+    event.ts,
+    JSON.stringify(event),
+  );
+  return updated === 1;
+};

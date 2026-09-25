@@ -3,7 +3,7 @@ import { createLogger } from '@mqtt-thing/logger';
 import mqtt from 'mqtt';
 import { config } from './config.js';
 import { createPool, insertReadings } from './db.js';
-import { channelFor, createPublisher, toEvent } from './events.js';
+import { channelFor, createPublisher, storeLatest, toEvent } from './events.js';
 import { parseTelemetry } from './telemetry.js';
 
 const logger = createLogger('ingestion');
@@ -47,7 +47,10 @@ client.on('message', (topic, payload) => {
 
       const event = toEvent(parsed.readings);
       if (event !== null) {
-        void publisher.publish(channelFor(event.tenantId), JSON.stringify(event));
+        const json = JSON.stringify(event);
+        storeLatest(publisher, event)
+          .then(() => publisher.publish(channelFor(event.tenantId), json))
+          .catch((error: unknown) => logger.error({ err: error, topic }, 'redis write failed'));
       }
 
       logger.debug({ topic, inserted }, 'inserted readings');

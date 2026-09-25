@@ -4,6 +4,7 @@ export type DeviceSummary = {
   deviceId: string;
   lastSeen: string;
   metrics: string[];
+  latest: Record<string, number> | null;
 };
 
 export type Bucket = {
@@ -33,6 +34,7 @@ export const listDevices = async (pool: pg.Pool, tenantId: string): Promise<Devi
     deviceId: row.device_id,
     lastSeen: row.last_seen.toISOString(),
     metrics: row.metrics,
+    latest: null,
   }));
 };
 
