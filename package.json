@@ -21,6 +21,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
     "@testcontainers/postgresql": "^12.1.0",
+    "@testcontainers/redis": "^12.1.0",
     "@types/node": "^24.13.4",
     "dotenv": "^17.4.2",
     "lefthook": "^2.1.14",
