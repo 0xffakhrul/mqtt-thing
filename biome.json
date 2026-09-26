@@ -23,7 +23,7 @@
   },
   "linter": {
     "enabled": true,
-    "domains": { "test": "recommended" },
+    "domains": { "test": "recommended", "react": "recommended" },
     "rules": {
       "preset": "recommended",
       "correctness": {

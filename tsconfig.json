@@ -13,5 +13,12 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["packages/**/*.ts", "services/**/*.ts", "tools/**/*.ts", "vitest.config.ts"]
+  "include": [
+    "packages/**/*.ts",
+    "services/**/*.ts",
+    "tools/**/*.ts",
+    "vitest.config.ts",
+    "services/web/src/main.tsx"
+  ],
+  "exclude": ["services/web"]
 }
