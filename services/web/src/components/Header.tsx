@@ -1,15 +1,20 @@
-import { TENANT_ID } from './api.js';
+import { Link, NavLink } from 'react-router';
+import { TENANT_ID } from '../api/api.js';
 
 export const Header = () => (
   <header className="header">
     <div className="header-left">
-      <a href="/" className="wordmark">
+      <Link to="/" className="wordmark">
         mqtt-thing
-      </a>
+      </Link>
       <nav className="nav">
-        <a href="/" className="nav-link nav-link-active">
+        <NavLink
+          to="/"
+          end={false}
+          className={({ isActive }) => (isActive ? 'nav-link nav-link-active' : 'nav-link')}
+        >
           Devices
-        </a>
+        </NavLink>
       </nav>
     </div>
     <div className="header-right">

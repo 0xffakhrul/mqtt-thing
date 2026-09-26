@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import { api } from './api.js';
+import { api } from '../api/api.js';
+import { viewSlice } from '../features/devices/viewSlice.js';
 
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
+    [viewSlice.name]: viewSlice.reducer,
   },
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(api.middleware),
 });

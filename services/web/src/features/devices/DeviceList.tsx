@@ -1,6 +1,7 @@
-import { type DeviceSummary, useGetDevicesQuery } from './api.js';
-import { describeError } from './errors.js';
-import { formatAge, formatValue, isStale, secondsSince, unitFor } from './format.js';
+import { Link } from 'react-router';
+import { type DeviceSummary, useGetDevicesQuery } from '../../api/api.js';
+import { describeError } from '../../api/errors.js';
+import { formatAge, formatValue, isStale, secondsSince, unitFor } from '../../lib/format.js';
 
 const Summary = ({ devices }: { devices: DeviceSummary[] }) => {
   const now = Date.now();
@@ -30,7 +31,7 @@ const DeviceCard = ({ device }: { device: DeviceSummary }) => {
   const stale = isStale(device.lastSeen);
 
   return (
-    <a href={`/devices/${device.deviceId}`} className="card">
+    <Link to={`/devices/${device.deviceId}`} className="card">
       <div className="card-header">
         <span className="card-title">{device.deviceId}</span>
         <span className={stale ? 'tag tag-stale' : 'tag tag-live'}>{stale ? 'STALE' : 'LIVE'}</span>
@@ -56,7 +57,7 @@ const DeviceCard = ({ device }: { device: DeviceSummary }) => {
         <span>last seen {formatAge(secondsSince(device.lastSeen))}</span>
         <span className="ink">open →</span>
       </div>
-    </a>
+    </Link>
   );
 };
 
