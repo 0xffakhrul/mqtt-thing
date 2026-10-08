@@ -255,10 +255,6 @@ a:hover {
     padding: 0 16px;
   }
 
-  .header-right {
-    display: none;
-  }
-
   .page {
     padding: 16px;
     gap: 16px;
@@ -489,5 +485,156 @@ a:hover {
 
   .chart-frame {
     padding: 0 8px 12px;
+  }
+}
+
+/* Live stream */
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  border: 1px solid currentColor;
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+}
+
+.badge-live {
+  color: var(--accent);
+}
+
+.badge-waiting {
+  color: var(--stale);
+}
+
+.badge-waiting .badge-dot {
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-waiting .badge-dot {
+    animation: none;
+  }
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.readings-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.readings-table th,
+.readings-table td {
+  padding: 9px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e4e2da;
+}
+
+.readings-table th {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+}
+
+.readings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.readings-table .col-time {
+  width: 96px;
+}
+
+.readings-table .col-device {
+  width: 140px;
+}
+
+.readings-newest {
+  background: #eef2fa;
+}
+
+.readings-empty {
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.strong {
+  font-weight: 500;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-right .tenant {
+    display: none;
+  }
+
+  .readings-table {
+    font-size: 12px;
+  }
+
+  .readings-table th,
+  .readings-table td {
+    padding: 9px 8px;
+  }
+
+  .readings-table .col-time {
+    width: 72px;
+  }
+
+  .readings-table .col-device {
+    width: 80px;
   }
 }

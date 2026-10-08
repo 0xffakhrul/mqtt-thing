@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router';
 import { TENANT_ID } from '../api/api.js';
+import { StreamBadge } from './StreamBadge.js';
 
 export const Header = () => (
   <header className="header">
@@ -18,9 +19,10 @@ export const Header = () => (
       </nav>
     </div>
     <div className="header-right">
-      <span className="muted">
+      <span className="muted tenant">
         tenant <strong className="ink">{TENANT_ID}</strong>
       </span>
+      <StreamBadge />
     </div>
   </header>
 );

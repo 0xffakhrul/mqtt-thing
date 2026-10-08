@@ -5,17 +5,20 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks.js';
 import { SegmentedControl } from '../../components/SegmentedControl.js';
 import { formatAge, formatValue, isStale, secondsSince, unitFor } from '../../lib/format.js';
 import { RANGES } from '../../lib/ranges.js';
+import { useNow } from '../../lib/useNow.js';
 import { Chart } from './Chart.js';
+import { RecentReadings } from './RecentReadings.js';
 import { metricSelected, rangeSelected } from './viewSlice.js';
 
 export const DevicePage = () => {
   const { deviceId = '' } = useParams();
   const dispatch = useAppDispatch();
   const { metric, range } = useAppSelector((state) => state.view);
+  const now = useNow();
 
   // Reuses the list query's cache entry: no extra request if you came from the list.
   const { device, isLoading: devicesLoading } = useGetDevicesQuery(undefined, {
-    pollingInterval: 10_000,
+    pollingInterval: 60_000,
     selectFromResult: ({ data, isLoading }) => ({
       device: data?.find((d) => d.deviceId === deviceId),
       isLoading,
@@ -37,7 +40,7 @@ export const DevicePage = () => {
     );
   }
 
-  const stale = isStale(device.lastSeen);
+  const stale = isStale(device.lastSeen, now);
   const metrics = device.metrics.length > 0 ? device.metrics : [metric];
   const points = series?.points ?? [];
   const lows = points.map((p) => p.min);
@@ -57,7 +60,8 @@ export const DevicePage = () => {
             </span>
           </div>
           <span className="muted meta">
-            {device.metrics.length} metrics · last seen {formatAge(secondsSince(device.lastSeen))}
+            {device.metrics.length} metrics · last seen{' '}
+            {formatAge(secondsSince(device.lastSeen, now))}
           </span>
         </div>
       </div>
@@ -76,59 +80,63 @@ export const DevicePage = () => {
         </div>
       )}
 
-      <section className="panel">
-        <div className="panel-toolbar">
-          <SegmentedControl
-            label="Metric"
-            options={metrics}
-            value={metric}
-            onChange={(next) => dispatch(metricSelected(next))}
-          />
-          <SegmentedControl
-            label="Time range"
-            options={RANGES}
-            value={range}
-            onChange={(next) => dispatch(rangeSelected(next))}
-          />
-        </div>
-
-        <div className="panel-meta">
-          <span>
-            {series === undefined
-              ? '—'
-              : `${series.bucket.replace(' seconds', ' s')} buckets · ${series.count} points`}
-            {isFetching && ' · updating'}
-          </span>
-          <span className="legend">
-            <span className="legend-line" /> avg <span className="legend-band" /> min–max
-          </span>
-        </div>
-
-        <div className="chart-frame">
-          {seriesError !== undefined ? (
-            <p className="error chart-message">
-              Could not load readings: {describeError(seriesError)}
-            </p>
-          ) : points.length === 0 ? (
-            <p className="muted chart-message">
-              {series === undefined ? 'Loading readings…' : 'No readings in this range.'}
-            </p>
-          ) : (
-            <Chart
-              points={points}
-              metric={metric}
-              label={`${metric} over the last ${range}, average with min–max band`}
+      <div className="detail-grid">
+        <section className="panel">
+          <div className="panel-toolbar">
+            <SegmentedControl
+              label="Metric"
+              options={metrics}
+              value={metric}
+              onChange={(next) => dispatch(metricSelected(next))}
             />
-          )}
-        </div>
-
-        {points.length > 0 && (
-          <div className="panel-footer muted">
-            {range} min {formatValue(metric, Math.min(...lows))} · max{' '}
-            {formatValue(metric, Math.max(...highs))} {unitFor(metric)}
+            <SegmentedControl
+              label="Time range"
+              options={RANGES}
+              value={range}
+              onChange={(next) => dispatch(rangeSelected(next))}
+            />
           </div>
-        )}
-      </section>
+
+          <div className="panel-meta">
+            <span>
+              {series === undefined
+                ? '—'
+                : `${series.bucket.replace(' seconds', ' s')} buckets · ${series.count} points`}
+              {isFetching && ' · updating'}
+            </span>
+            <span className="legend">
+              <span className="legend-line" /> avg <span className="legend-band" /> min–max
+            </span>
+          </div>
+
+          <div className="chart-frame">
+            {seriesError !== undefined ? (
+              <p className="error chart-message">
+                Could not load readings: {describeError(seriesError)}
+              </p>
+            ) : points.length === 0 ? (
+              <p className="muted chart-message">
+                {series === undefined ? 'Loading readings…' : 'No readings in this range.'}
+              </p>
+            ) : (
+              <Chart
+                points={points}
+                metric={metric}
+                label={`${metric} over the last ${range}, average with min–max band`}
+              />
+            )}
+          </div>
+
+          {points.length > 0 && (
+            <div className="panel-footer muted">
+              {range} min {formatValue(metric, Math.min(...lows))} · max{' '}
+              {formatValue(metric, Math.max(...highs))} {unitFor(metric)}
+            </div>
+          )}
+        </section>
+
+        <RecentReadings deviceId={device.deviceId} />
+      </div>
     </>
   );
 };

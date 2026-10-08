@@ -2,9 +2,9 @@ import { Link } from 'react-router';
 import { type DeviceSummary, useGetDevicesQuery } from '../../api/api.js';
 import { describeError } from '../../api/errors.js';
 import { formatAge, formatValue, isStale, secondsSince, unitFor } from '../../lib/format.js';
+import { useNow } from '../../lib/useNow.js';
 
-const Summary = ({ devices }: { devices: DeviceSummary[] }) => {
-  const now = Date.now();
+const Summary = ({ devices, now }: { devices: DeviceSummary[]; now: number }) => {
   const stale = devices.filter((device) => isStale(device.lastSeen, now)).length;
   const newest = Math.min(...devices.map((device) => secondsSince(device.lastSeen, now)));
 
@@ -27,8 +27,8 @@ const Summary = ({ devices }: { devices: DeviceSummary[] }) => {
   );
 };
 
-const DeviceCard = ({ device }: { device: DeviceSummary }) => {
-  const stale = isStale(device.lastSeen);
+const DeviceCard = ({ device, now }: { device: DeviceSummary; now: number }) => {
+  const stale = isStale(device.lastSeen, now);
 
   return (
     <Link to={`/devices/${device.deviceId}`} className="card">
@@ -54,7 +54,7 @@ const DeviceCard = ({ device }: { device: DeviceSummary }) => {
       )}
 
       <div className="card-footer">
-        <span>last seen {formatAge(secondsSince(device.lastSeen))}</span>
+        <span>last seen {formatAge(secondsSince(device.lastSeen, now))}</span>
         <span className="ink">open →</span>
       </div>
     </Link>
@@ -62,12 +62,13 @@ const DeviceCard = ({ device }: { device: DeviceSummary }) => {
 };
 
 export const DeviceList = () => {
+  const now = useNow();
   const {
     data: devices,
     error,
     isLoading,
   } = useGetDevicesQuery(undefined, {
-    pollingInterval: 10_000,
+    pollingInterval: 60_000,
     refetchOnFocus: true,
   });
 
@@ -79,10 +80,10 @@ export const DeviceList = () => {
 
   return (
     <>
-      <Summary devices={devices} />
+      <Summary devices={devices} now={now} />
       <div className="card-grid">
         {devices.map((device) => (
-          <DeviceCard key={device.deviceId} device={device} />
+          <DeviceCard key={device.deviceId} device={device} now={now} />
         ))}
       </div>
     </>

@@ -62,7 +62,7 @@ export const registerStream = (app: App, redisUrl: string, logger: Logger): void
     });
   });
 
-  app.addHook('onClose', async () => {
-    await subscriber.quit();
+  app.addHook('onClose', () => {
+    subscriber.disconnect();
   });
 };

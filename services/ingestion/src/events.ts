@@ -10,7 +10,13 @@ export type ReadingEvent = {
 
 export const channelFor = (tenantId: string): string => `readings:${tenantId}`;
 
-export const createPublisher = (url: string): Redis => new Redis(url, { lazyConnect: false });
+export const REDIS_OPTIONS = {
+  enableOfflineQueue: false,
+  maxRetriesPerRequest: 1,
+  commandTimeout: 1_000,
+} as const;
+
+export const createPublisher = (url: string): Redis => new Redis(url, REDIS_OPTIONS);
 
 export const toEvent = (readings: Reading[]): ReadingEvent | null => {
   const first = readings[0];
@@ -53,4 +59,13 @@ export const storeLatest = async (redis: Redis, event: ReadingEvent): Promise<bo
     JSON.stringify(event),
   );
   return updated === 1;
+};
+
+export const createThrottle = (intervalMs: number) => {
+  let last = Number.NEGATIVE_INFINITY;
+  return (now: number = Date.now()): boolean => {
+    if (now - last < intervalMs) return false;
+    last = now;
+    return true;
+  };
 };
