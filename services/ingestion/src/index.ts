@@ -3,13 +3,36 @@ import { createLogger } from '@mqtt-thing/logger';
 import mqtt from 'mqtt';
 import { config } from './config.js';
 import { createPool, insertReadings } from './db.js';
-import { channelFor, createPublisher, storeLatest, toEvent } from './events.js';
+import { channelFor, createPublisher, createThrottle, storeLatest, toEvent } from './events.js';
 import { parseTelemetry } from './telemetry.js';
 
 const logger = createLogger('ingestion');
 const pool = createPool(config.databaseUrl);
+const publisher = createPublisher(config.redisUrl);
 
 const TELEMETRY_WILDCARD = 'v1/+/devices/+/telemetry';
+
+let redisState: 'connecting' | 'ready' | 'down' = 'connecting';
+let droppedWrites = 0;
+const reportDrops = createThrottle(30_000);
+
+publisher.on('ready', () => {
+  redisState = 'ready';
+  logger.info('redis ready');
+});
+
+publisher.on('error', (error) => {
+  if (redisState === 'down') return;
+  redisState = 'down';
+  logger.warn({ err: error }, 'redis unavailable; cache updates will be dropped until it returns');
+});
+
+const recordDroppedWrite = (error: unknown): void => {
+  droppedWrites += 1;
+  if (!reportDrops()) return;
+  logger.warn({ dropped: droppedWrites, err: error }, 'dropping cache writes; redis not connected');
+  droppedWrites = 0;
+};
 
 const client = mqtt.connect(config.mqttUrl, {
   clientId: `ingestion-${randomUUID()}`,
@@ -50,20 +73,18 @@ client.on('message', (topic, payload) => {
         const json = JSON.stringify(event);
         storeLatest(publisher, event)
           .then(() => publisher.publish(channelFor(event.tenantId), json))
-          .catch((error: unknown) => logger.error({ err: error, topic }, 'redis write failed'));
+          .catch(recordDroppedWrite);
       }
 
       logger.debug({ topic, inserted }, 'inserted readings');
     })
     .catch((error: unknown) => logger.error({ err: error, topic }, 'insert failed'));
-
-  const publisher = createPublisher(config.redisUrl);
-  publisher.on('error', (error) => logger.error({ err: error }, 'redis error'));
 });
 
 const shutdown = (signal: string): void => {
   logger.info({ signal }, 'shutting down');
   client.end(false, {}, () => {
+    publisher.disconnect();
     void pool.end().then(() => {
       process.exitCode = 0;
     });

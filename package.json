@@ -10,9 +10,10 @@
   "scripts": {
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "typecheck": "tsc",
+    "typecheck": "tsc && tsc -p services/web",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run integration",
+    "verify": "biome check --write . && npm run typecheck && npm test",
     "migrate": "node-pg-migrate --envPath .env up",
     "migrate:down": "node-pg-migrate --envPath .env down",
     "migrate:redo": "node-pg-migrate --envPath .env redo",
