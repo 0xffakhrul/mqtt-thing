@@ -28,3 +28,26 @@ export const insertReadings = async (pool: pg.Pool, readings: Reading[]): Promis
   const inserted = result.rowCount ?? 0;
   return { inserted, duplicates: readings.length - inserted };
 };
+
+export const updateLatest = async (pool: pg.Pool, readings: Reading[]): Promise<number> => {
+  if (readings.length === 0) return 0;
+
+  const result = await pool.query(
+    `INSERT INTO latest_readings (tenant_id, device_id, metric, ts, value)
+     SELECT * FROM unnest(
+       $1::text[], $2::text[], $3::text[], $4::timestamptz[], $5::double precision[]
+     )
+     ON CONFLICT (tenant_id, device_id, metric)
+     DO UPDATE SET ts = EXCLUDED.ts, value = EXCLUDED.value
+     WHERE EXCLUDED.ts > latest_readings.ts`,
+    [
+      readings.map((r) => r.tenantId),
+      readings.map((r) => r.deviceId),
+      readings.map((r) => r.metric),
+      readings.map((r) => r.ts.toISOString()),
+      readings.map((r) => r.value),
+    ],
+  );
+
+  return result.rowCount ?? 0;
+};

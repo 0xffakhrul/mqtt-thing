@@ -1,10 +1,8 @@
 import websocket from '@fastify/websocket';
 import { createLogger } from '@mqtt-thing/logger';
 import Fastify from 'fastify';
-import { Redis } from 'ioredis';
 import pg from 'pg';
 import { z } from 'zod';
-import { listDevicesFromCache } from './cache.js';
 import { config } from './config.js';
 import { bucketFor } from './downsample.js';
 import { listDevices, readSeries } from './queries.js';
@@ -14,14 +12,7 @@ const { Pool } = pg;
 
 const logger = createLogger('api');
 const pool = new Pool({ connectionString: config.databaseUrl });
-const cache = new Redis(config.redisUrl, {
-  enableOfflineQueue: false,
-  maxRetriesPerRequest: 1,
-  commandTimeout: 500,
-});
-cache.on('error', () => {
-  //
-});
+
 const app = Fastify({ loggerInstance: logger });
 
 await app.register(websocket);
@@ -47,18 +38,7 @@ app.get('/api/v1/devices', async (request, reply) => {
     return reply.code(400).send({ error: z.prettifyError(query.error) });
   }
 
-  const cached = await listDevicesFromCache(cache, query.data.tenantId).catch((error: unknown) => {
-    request.log.warn({ err: error }, 'cache unavailable, reading devices from postgres');
-    return null;
-  });
-  if (cached !== null) {
-    return { source: 'cache', devices: cached };
-  }
-
-  return {
-    source: 'database',
-    devices: await listDevices(pool, query.data.tenantId),
-  };
+  return { devices: await listDevices(pool, query.data.tenantId) };
 });
 
 app.get('/api/v1/devices/:deviceId/series', async (request, reply) => {
@@ -116,7 +96,6 @@ const start = async (): Promise<void> => {
 const shutdown = async (): Promise<void> => {
   await app.close();
   await pool.end();
-  cache.disconnect();
   process.exitCode = 0;
 };
 

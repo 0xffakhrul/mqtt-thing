@@ -1,7 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createPool, insertReadings } from '../src/db.js';
+import { createPool, insertReadings, updateLatest } from '../src/db.js';
 import type { Reading } from '../src/telemetry.js';
 
 let container: StartedPostgreSqlContainer;
@@ -35,6 +35,15 @@ beforeAll(async () => {
   await pool.query(`
     CREATE UNIQUE INDEX readings_dedup_uniq
       ON readings (tenant_id, device_id, seq, metric, ts)`);
+  await pool.query(`
+    CREATE TABLE latest_readings (
+      tenant_id text NOT NULL,
+      device_id text NOT NULL,
+      metric text NOT NULL,
+      ts timestamptz NOT NULL,
+      value double precision NOT NULL,
+      PRIMARY KEY (tenant_id, device_id, metric)
+    )`);
 }, 120_000);
 
 afterAll(async () => {
@@ -43,7 +52,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('TRUNCATE readings');
+  await pool.query('TRUNCATE readings, latest_readings');
 });
 
 describe('insertReadings', () => {
@@ -101,5 +110,42 @@ describe('insertReadings', () => {
     ]);
 
     expect(result).toEqual({ inserted: 1, duplicates: 0 });
+  });
+});
+
+describe('updateLatest', () => {
+  const latestTemp = async (): Promise<number | undefined> => {
+    const { rows } = await pool.query(
+      `SELECT value FROM latest_readings WHERE device_id = 'sim-001' AND metric = 'temp_c'`,
+    );
+    return rows[0]?.value;
+  };
+
+  it('stores the first reading for a device', async () => {
+    expect(await updateLatest(pool, [reading({ value: 27 })])).toBe(1);
+    expect(await latestTemp()).toBe(27);
+  });
+
+  it('replaces the latest value with a newer reading', async () => {
+    await updateLatest(pool, [reading({ value: 27 })]);
+    const updated = await updateLatest(pool, [
+      reading({ value: 28, ts: new Date('2026-09-12T04:21:02.000Z') }),
+    ]);
+
+    expect(updated).toBe(1);
+    expect(await latestTemp()).toBe(28);
+  });
+
+  it('refuses to overwrite with a late, older reading', async () => {
+    await updateLatest(pool, [reading({ value: 28, ts: new Date('2026-09-12T04:21:02.000Z') })]);
+    const updated = await updateLatest(pool, [reading({ value: 27 })]);
+
+    expect(updated).toBe(0);
+    expect(await latestTemp()).toBe(28);
+  });
+
+  it('ignores an exact redelivery', async () => {
+    await updateLatest(pool, [reading({ value: 27 })]);
+    expect(await updateLatest(pool, [reading({ value: 27 })])).toBe(0);
   });
 });
