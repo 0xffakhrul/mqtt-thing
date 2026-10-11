@@ -1,12 +1,5 @@
 import type pg from 'pg';
 
-export type DeviceSummary = {
-  deviceId: string;
-  lastSeen: string;
-  metrics: string[];
-  latest: Record<string, number> | null;
-};
-
 export type Bucket = {
   bucket: string;
   value: number;
@@ -14,16 +7,25 @@ export type Bucket = {
   max: number;
 };
 
+export type DeviceSummary = {
+  deviceId: string;
+  lastSeen: string;
+  metrics: string[];
+  latest: Record<string, number>;
+};
+
 export const listDevices = async (pool: pg.Pool, tenantId: string): Promise<DeviceSummary[]> => {
   const { rows } = await pool.query<{
     device_id: string;
     last_seen: Date;
     metrics: string[];
+    latest: Record<string, number>;
   }>(
     `SELECT device_id,
-            max(ts)                     AS last_seen,
-            array_agg(DISTINCT metric)  AS metrics
-       FROM readings
+            max(ts)                            AS last_seen,
+            array_agg(metric ORDER BY metric)  AS metrics,
+            jsonb_object_agg(metric, value)    AS latest
+       FROM latest_readings
       WHERE tenant_id = $1
       GROUP BY device_id
       ORDER BY device_id`,
@@ -34,7 +36,7 @@ export const listDevices = async (pool: pg.Pool, tenantId: string): Promise<Devi
     deviceId: row.device_id,
     lastSeen: row.last_seen.toISOString(),
     metrics: row.metrics,
-    latest: null,
+    latest: row.latest,
   }));
 };
 

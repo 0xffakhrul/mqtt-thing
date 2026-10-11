@@ -1,20 +1,31 @@
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { useGetDevicesQuery, useGetSeriesQuery } from '../../api/api.js';
 import { describeError } from '../../api/errors.js';
-import { useAppDispatch, useAppSelector } from '../../app/hooks.js';
 import { SegmentedControl } from '../../components/SegmentedControl.js';
 import { formatAge, formatValue, isStale, secondsSince, unitFor } from '../../lib/format.js';
-import { RANGES } from '../../lib/ranges.js';
+import { isRange, RANGES } from '../../lib/ranges.js';
 import { useNow } from '../../lib/useNow.js';
 import { Chart } from './Chart.js';
 import { RecentReadings } from './RecentReadings.js';
-import { metricSelected, rangeSelected } from './viewSlice.js';
 
 export const DevicePage = () => {
   const { deviceId = '' } = useParams();
-  const dispatch = useAppDispatch();
-  const { metric, range } = useAppSelector((state) => state.view);
+  const [params, setParams] = useSearchParams();
   const now = useNow();
+
+  // The URL is the state: each device keeps its own choice, and links are shareable.
+  const metric = params.get('metric') ?? 'temp_c';
+  const rangeParam = params.get('range');
+  const range = isRange(rangeParam) ? rangeParam : '1h';
+
+  const select = (key: 'metric' | 'range', value: string) =>
+    setParams(
+      (prev) => {
+        prev.set(key, value);
+        return prev;
+      },
+      { replace: true },
+    );
 
   // Reuses the list query's cache entry: no extra request if you came from the list.
   const { device, isLoading: devicesLoading } = useGetDevicesQuery(undefined, {
@@ -66,19 +77,17 @@ export const DevicePage = () => {
         </div>
       </div>
 
-      {device.latest !== null && (
-        <div className="stats stats-strip">
-          {Object.entries(device.latest).map(([name, value]) => (
-            <div key={name} className="stat">
-              <div className="label">{name.toUpperCase()}</div>
-              <div className={stale ? 'stat-value stat-value-lg dim' : 'stat-value stat-value-lg'}>
-                {formatValue(name, value)}
-                <span className="unit">{unitFor(name)}</span>
-              </div>
+      <div className="stats stats-strip">
+        {Object.entries(device.latest).map(([name, value]) => (
+          <div key={name} className="stat">
+            <div className="label">{name.toUpperCase()}</div>
+            <div className={stale ? 'stat-value stat-value-lg dim' : 'stat-value stat-value-lg'}>
+              {formatValue(name, value)}
+              <span className="unit">{unitFor(name)}</span>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
 
       <div className="detail-grid">
         <section className="panel">
@@ -87,13 +96,13 @@ export const DevicePage = () => {
               label="Metric"
               options={metrics}
               value={metric}
-              onChange={(next) => dispatch(metricSelected(next))}
+              onChange={(next) => select('metric', next)}
             />
             <SegmentedControl
               label="Time range"
               options={RANGES}
               value={range}
-              onChange={(next) => dispatch(rangeSelected(next))}
+              onChange={(next) => select('range', next)}
             />
           </div>
 

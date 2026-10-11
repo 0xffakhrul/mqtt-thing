@@ -10,6 +10,15 @@ const StreamQuery = z.object({
   deviceId: z.string().min(1).optional(),
 });
 
+const deviceIdOf = (payload: string): string | undefined => {
+  try {
+    const { deviceId } = JSON.parse(payload) as { deviceId?: unknown };
+    return typeof deviceId === 'string' ? deviceId : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 type App = FastifyInstance<RawServerDefault, IncomingMessage, ServerResponse, Logger>;
 
 export const registerStream = (app: App, redisUrl: string, logger: Logger): void => {
@@ -30,12 +39,11 @@ export const registerStream = (app: App, redisUrl: string, logger: Logger): void
 
   subscriber.on('pmessage', (_pattern, channel, payload) => {
     const tenantId = channel.slice('readings:'.length);
+    const deviceId = deviceIdOf(payload);
 
     for (const socket of sockets) {
       if (socket.tenantId !== tenantId) continue;
-      if (socket.deviceId !== undefined && !payload.includes(`"deviceId":"${socket.deviceId}"`)) {
-        continue;
-      }
+      if (socket.deviceId !== undefined && socket.deviceId !== deviceId) continue;
       socket.send(payload);
     }
   });

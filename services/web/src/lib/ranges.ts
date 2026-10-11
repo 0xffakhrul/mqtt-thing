@@ -10,3 +10,6 @@ const RANGE_MS: Record<Range, number> = {
 };
 
 export const rangeMs = (range: Range): number => RANGE_MS[range];
+
+export const isRange = (value: string | null): value is Range =>
+  (RANGES as readonly (string | null)[]).includes(value);

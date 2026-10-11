@@ -8,11 +8,10 @@ export type DeviceSummary = {
   deviceId: string;
   lastSeen: string;
   metrics: string[];
-  latest: Record<string, number> | null;
+  latest: Record<string, number>;
 };
 
 type DevicesResponse = {
-  source: 'cache' | 'database';
   devices: DeviceSummary[];
 };
 

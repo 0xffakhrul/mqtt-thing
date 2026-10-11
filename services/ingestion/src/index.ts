@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { createLogger } from '@mqtt-thing/logger';
 import mqtt from 'mqtt';
 import { config } from './config.js';
-import { createPool, insertReadings } from './db.js';
-import { channelFor, createPublisher, createThrottle, storeLatest, toEvent } from './events.js';
-import { parseTelemetry } from './telemetry.js';
+import { createPool, insertReadings, updateLatest } from './db.js';
+import { channelFor, createPublisher, createThrottle, toEvent } from './events.js';
+import { parseTelemetry, type Reading } from './telemetry.js';
 
 const logger = createLogger('ingestion');
 const pool = createPool(config.databaseUrl);
@@ -12,26 +12,45 @@ const publisher = createPublisher(config.redisUrl);
 
 const TELEMETRY_WILDCARD = 'v1/+/devices/+/telemetry';
 
-let redisState: 'connecting' | 'ready' | 'down' = 'connecting';
-let droppedWrites = 0;
+let redisDown = false;
+let droppedEvents = 0;
 const reportDrops = createThrottle(30_000);
 
 publisher.on('ready', () => {
-  redisState = 'ready';
+  redisDown = false;
   logger.info('redis ready');
 });
 
 publisher.on('error', (error) => {
-  if (redisState === 'down') return;
-  redisState = 'down';
-  logger.warn({ err: error }, 'redis unavailable; cache updates will be dropped until it returns');
+  if (redisDown) return;
+  redisDown = true;
+  logger.warn({ err: error }, 'redis unavailable; live events will be dropped until it returns');
 });
 
-const recordDroppedWrite = (error: unknown): void => {
-  droppedWrites += 1;
+const recordDroppedEvent = (error: unknown): void => {
+  droppedEvents += 1;
   if (!reportDrops()) return;
-  logger.warn({ dropped: droppedWrites, err: error }, 'dropping cache writes; redis not connected');
-  droppedWrites = 0;
+  logger.warn({ dropped: droppedEvents, err: error }, 'dropping live events; redis not connected');
+  droppedEvents = 0;
+};
+
+const handleReadings = async (topic: string, readings: Reading[]): Promise<void> => {
+  const { inserted, duplicates } = await insertReadings(pool, readings);
+  if (duplicates > 0) {
+    logger.info({ topic, inserted, duplicates }, 'dropped duplicate readings');
+    return;
+  }
+
+  await updateLatest(pool, readings);
+
+  // Live fanout is best effort: if redis is down the reading is still stored,
+  // the dashboard just doesn't get the push.
+  const event = toEvent(readings);
+  if (event !== null) {
+    publisher.publish(channelFor(event.tenantId), JSON.stringify(event)).catch(recordDroppedEvent);
+  }
+
+  logger.debug({ topic, inserted }, 'inserted readings');
 };
 
 const client = mqtt.connect(config.mqttUrl, {
@@ -61,24 +80,9 @@ client.on('message', (topic, payload) => {
     return;
   }
 
-  insertReadings(pool, parsed.readings)
-    .then(({ inserted, duplicates }) => {
-      if (duplicates > 0) {
-        logger.info({ topic, inserted, duplicates }, 'dropped duplicate readings');
-        return;
-      }
-
-      const event = toEvent(parsed.readings);
-      if (event !== null) {
-        const json = JSON.stringify(event);
-        storeLatest(publisher, event)
-          .then(() => publisher.publish(channelFor(event.tenantId), json))
-          .catch(recordDroppedWrite);
-      }
-
-      logger.debug({ topic, inserted }, 'inserted readings');
-    })
-    .catch((error: unknown) => logger.error({ err: error, topic }, 'insert failed'));
+  handleReadings(topic, parsed.readings).catch((error: unknown) =>
+    logger.error({ err: error, topic }, 'write failed'),
+  );
 });
 
 const shutdown = (signal: string): void => {

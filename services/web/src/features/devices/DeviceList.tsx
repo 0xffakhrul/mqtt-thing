@@ -37,21 +37,17 @@ const DeviceCard = ({ device, now }: { device: DeviceSummary; now: number }) => 
         <span className={stale ? 'tag tag-stale' : 'tag tag-live'}>{stale ? 'STALE' : 'LIVE'}</span>
       </div>
 
-      {device.latest === null ? (
-        <p className="card-empty muted">No live values yet</p>
-      ) : (
-        <div className="stats">
-          {Object.entries(device.latest).map(([metric, value]) => (
-            <div key={metric} className="stat">
-              <div className="label">{metric.toUpperCase()}</div>
-              <div className={stale ? 'stat-value dim' : 'stat-value'}>
-                {formatValue(metric, value)}
-                <span className="unit">{unitFor(metric)}</span>
-              </div>
+      <div className="stats">
+        {Object.entries(device.latest).map(([metric, value]) => (
+          <div key={metric} className="stat">
+            <div className="label">{metric.toUpperCase()}</div>
+            <div className={stale ? 'stat-value dim' : 'stat-value'}>
+              {formatValue(metric, value)}
+              <span className="unit">{unitFor(metric)}</span>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
 
       <div className="card-footer">
         <span>last seen {formatAge(secondsSince(device.lastSeen, now))}</span>
