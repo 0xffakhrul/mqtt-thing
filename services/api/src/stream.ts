@@ -1,12 +1,10 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import '@fastify/websocket';
 import type { Logger } from '@mqtt-thing/logger';
-import type { FastifyInstance, RawServerDefault } from 'fastify';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
+import type { App } from './app.js';
 
 const StreamQuery = z.object({
-  tenantId: z.string().min(1),
   deviceId: z.string().min(1).optional(),
 });
 
@@ -18,8 +16,6 @@ const deviceIdOf = (payload: string): string | undefined => {
     return undefined;
   }
 };
-
-type App = FastifyInstance<RawServerDefault, IncomingMessage, ServerResponse, Logger>;
 
 export const registerStream = (app: App, redisUrl: string, logger: Logger): void => {
   const subscriber = new Redis(redisUrl);
@@ -48,15 +44,17 @@ export const registerStream = (app: App, redisUrl: string, logger: Logger): void
     }
   });
 
+  // The auth hook has already checked the token before the upgrade, so
+  // request.user is set and the tenant comes from it, not from the URL.
   app.get('/api/v1/stream', { websocket: true }, (socket, request) => {
     const query = StreamQuery.safeParse(request.query);
     if (!query.success) {
-      socket.close(1008, 'tenantId is required');
+      socket.close(1008, 'invalid query');
       return;
     }
 
     const entry = {
-      tenantId: query.data.tenantId,
+      tenantId: request.user.tenantId,
       ...(query.data.deviceId === undefined ? {} : { deviceId: query.data.deviceId }),
       send: (data: string) => socket.send(data),
     };
