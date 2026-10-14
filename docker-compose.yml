@@ -105,6 +105,7 @@ services:
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "${API_PORT}:3000"
     depends_on:

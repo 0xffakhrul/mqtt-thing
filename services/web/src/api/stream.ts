@@ -14,9 +14,9 @@ export type StreamState = {
 
 export const RECENT_LIMIT = 20;
 
-export const streamUrl = (tenantId: string): string => {
+export const streamUrl = (token: string): string => {
   const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${scheme}://${window.location.host}/api/v1/stream?tenantId=${encodeURIComponent(tenantId)}`;
+  return `${scheme}://${window.location.host}/api/v1/stream?token=${encodeURIComponent(token)}`;
 };
 
 export const parseEvent = (raw: unknown): ReadingEvent | null => {

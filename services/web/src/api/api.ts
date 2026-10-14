@@ -1,8 +1,14 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { Dispatch } from '@reduxjs/toolkit';
+import {
+  type BaseQueryFn,
+  createApi,
+  type FetchArgs,
+  type FetchBaseQueryError,
+  fetchBaseQuery,
+} from '@reduxjs/toolkit/query/react';
+import { type AuthRoot, loggedOut, selectSession } from '../features/auth/authSlice.js';
 import { type Range, rangeMs } from '../lib/ranges.js';
 import { backoffMs, parseEvent, RECENT_LIMIT, type StreamState, streamUrl } from './stream.js';
-
-export const TENANT_ID = 'demo';
 
 export type DeviceSummary = {
   deviceId: string;
@@ -38,12 +44,50 @@ type SeriesArgs = {
   range: Range;
 };
 
+type LoginArgs = { email: string; password: string };
+type LoginResponse = {
+  token: string;
+  user: { email: string; tenantId: string };
+};
+
+const tokenFrom = (state: unknown): string | undefined => selectSession(state as AuthRoot)?.token;
+
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl: '/api/v1',
+  prepareHeaders: (headers, { getState }) => {
+    const token = tokenFrom(getState());
+    if (token !== undefined) headers.set('authorization', `Bearer ${token}`);
+    return headers;
+  },
+});
+
+export const logOut = (dispatch: Dispatch): void => {
+  dispatch(api.util.resetApiState());
+  dispatch(loggedOut());
+};
+
+const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+  args,
+  context,
+  extraOptions,
+) => {
+  const result = await rawBaseQuery(args, context, extraOptions);
+  if (result.error?.status === 401 && tokenFrom(context.getState()) !== undefined) {
+    logOut(context.dispatch);
+  }
+  return result;
+};
+
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api/v1' }),
+  baseQuery,
   endpoints: (build) => ({
+    login: build.mutation<LoginResponse, LoginArgs>({
+      query: (body) => ({ url: 'auth/login', method: 'POST', body }),
+    }),
+
     getDevices: build.query<DeviceSummary[], void>({
-      query: () => ({ url: 'devices', params: { tenantId: TENANT_ID } }),
+      query: () => 'devices',
       transformResponse: (response: DevicesResponse) => response.devices,
     }),
 
@@ -54,7 +98,6 @@ export const api = createApi({
         return {
           url: `devices/${encodeURIComponent(deviceId)}/series`,
           params: {
-            tenantId: TENANT_ID,
             metric,
             from: from.toISOString(),
             to: to.toISOString(),
@@ -69,7 +112,7 @@ export const api = createApi({
 
       async onCacheEntryAdded(
         _arg,
-        { updateCachedData, cacheDataLoaded, cacheEntryRemoved, dispatch },
+        { updateCachedData, cacheDataLoaded, cacheEntryRemoved, dispatch, getState },
       ) {
         await cacheDataLoaded;
 
@@ -83,7 +126,11 @@ export const api = createApi({
         let removed = false;
 
         const connect = () => {
-          const socket = new WebSocket(streamUrl(TENANT_ID));
+          // Read the token on every (re)connect, never once up front.
+          const token = tokenFrom(getState());
+          if (token === undefined) return;
+
+          const socket = new WebSocket(streamUrl(token));
           conn.socket = socket;
 
           socket.onopen = () => {
@@ -142,4 +189,4 @@ export const api = createApi({
   }),
 });
 
-export const { useGetDevicesQuery, useGetSeriesQuery, useGetStreamQuery } = api;
+export const { useLoginMutation, useGetDevicesQuery, useGetSeriesQuery, useGetStreamQuery } = api;
