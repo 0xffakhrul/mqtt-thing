@@ -5,12 +5,13 @@ import { formatAge, formatValue, isStale, secondsSince, unitFor } from '../../li
 import { useNow } from '../../lib/useNow.js';
 
 const Summary = ({ devices, now }: { devices: DeviceSummary[]; now: number }) => {
-  const stale = devices.filter((device) => isStale(device.lastSeen, now)).length;
+  const reported = devices.filter((device) => device.lastSeen !== null);
+  const stale = reported.filter((device) => isStale(device.lastSeen, now)).length;
   const newest = Math.min(...devices.map((device) => secondsSince(device.lastSeen, now)));
 
   const cells = [
     { label: 'DEVICES', value: String(devices.length) },
-    { label: 'ONLINE', value: String(devices.length - stale) },
+    { label: 'ONLINE', value: String(reported.length - stale) },
     { label: 'STALE', value: String(stale) },
     { label: 'LAST READING', value: formatAge(newest) },
   ];
@@ -27,6 +28,13 @@ const Summary = ({ devices, now }: { devices: DeviceSummary[]; now: number }) =>
   );
 };
 
+const StatusTag = ({ lastSeen, stale }: { lastSeen: string | null; stale: boolean }) => {
+  if (lastSeen === null) return <span className="tag tag-stale">NEW</span>;
+  return (
+    <span className={stale ? 'tag tag-stale' : 'tag tag-live'}>{stale ? 'STALE' : 'LIVE'}</span>
+  );
+};
+
 const DeviceCard = ({ device, now }: { device: DeviceSummary; now: number }) => {
   const stale = isStale(device.lastSeen, now);
 
@@ -34,20 +42,24 @@ const DeviceCard = ({ device, now }: { device: DeviceSummary; now: number }) => 
     <Link to={`/devices/${device.deviceId}`} className="card">
       <div className="card-header">
         <span className="card-title">{device.deviceId}</span>
-        <span className={stale ? 'tag tag-stale' : 'tag tag-live'}>{stale ? 'STALE' : 'LIVE'}</span>
+        <StatusTag lastSeen={device.lastSeen} stale={stale} />
       </div>
 
-      <div className="stats">
-        {Object.entries(device.latest).map(([metric, value]) => (
-          <div key={metric} className="stat">
-            <div className="label">{metric.toUpperCase()}</div>
-            <div className={stale ? 'stat-value dim' : 'stat-value'}>
-              {formatValue(metric, value)}
-              <span className="unit">{unitFor(metric)}</span>
+      {device.lastSeen === null ? (
+        <p className="card-empty muted">No readings yet</p>
+      ) : (
+        <div className="stats">
+          {Object.entries(device.latest).map(([metric, value]) => (
+            <div key={metric} className="stat">
+              <div className="label">{metric.toUpperCase()}</div>
+              <div className={stale ? 'stat-value dim' : 'stat-value'}>
+                {formatValue(metric, value)}
+                <span className="unit">{unitFor(metric)}</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="card-footer">
         <span>last seen {formatAge(secondsSince(device.lastSeen, now))}</span>

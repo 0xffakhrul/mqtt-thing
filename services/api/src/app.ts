@@ -6,7 +6,7 @@ import type pg from 'pg';
 import { z } from 'zod';
 import { registerAuth } from './auth.js';
 import { bucketFor } from './downsample.js';
-import { listDevices, readSeries } from './queries.js';
+import { deviceExists, listDevices, readSeries } from './queries.js';
 import { registerStream } from './stream.js';
 
 export type App = FastifyInstance<RawServerDefault, IncomingMessage, ServerResponse, Logger>;
@@ -66,6 +66,10 @@ export const buildApp = async (options: AppOptions): Promise<App> => {
     const query = SeriesQuery.safeParse(request.query);
     if (!query.success) {
       return reply.code(400).send({ error: z.prettifyError(query.error) });
+    }
+
+    if (!(await deviceExists(pool, request.user.tenantId, params.data.deviceId))) {
+      return reply.code(404).send({ error: 'device not found' });
     }
 
     const to = query.data.to === undefined ? new Date() : new Date(query.data.to);

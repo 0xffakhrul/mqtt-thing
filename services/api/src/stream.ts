@@ -19,6 +19,19 @@ const deviceIdOf = (payload: string): string | undefined => {
 
 export const registerStream = (app: App, redisUrl: string, logger: Logger): void => {
   const subscriber = new Redis(redisUrl);
+
+  let redisDown = false;
+  subscriber.on('error', (error) => {
+    if (redisDown) return;
+    redisDown = true;
+    logger.warn({ err: error }, 'redis unavailable; live stream paused until it returns');
+  });
+  subscriber.on('ready', () => {
+    if (!redisDown) return;
+    redisDown = false;
+    logger.info('redis back; live stream resumed');
+  });
+
   const sockets = new Set<{
     tenantId: string;
     deviceId?: string;
