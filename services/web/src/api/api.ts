@@ -12,7 +12,7 @@ import { backoffMs, parseEvent, RECENT_LIMIT, type StreamState, streamUrl } from
 
 export type DeviceSummary = {
   deviceId: string;
-  lastSeen: string;
+  lastSeen: string | null;
   metrics: string[];
   latest: Record<string, number>;
 };
@@ -161,9 +161,12 @@ export const api = createApi({
                   });
                   return;
                 }
-                if (event.ts < device.lastSeen) return;
+                if (device.lastSeen !== null && event.ts < device.lastSeen) return;
                 device.lastSeen = event.ts;
                 device.latest = event.readings;
+                if (device.metrics.length === 0) {
+                  device.metrics = Object.keys(event.readings).sort();
+                }
               }),
             );
           };

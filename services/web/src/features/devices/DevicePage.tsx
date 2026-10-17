@@ -77,17 +77,19 @@ export const DevicePage = () => {
         </div>
       </div>
 
-      <div className="stats stats-strip">
-        {Object.entries(device.latest).map(([name, value]) => (
-          <div key={name} className="stat">
-            <div className="label">{name.toUpperCase()}</div>
-            <div className={stale ? 'stat-value stat-value-lg dim' : 'stat-value stat-value-lg'}>
-              {formatValue(name, value)}
-              <span className="unit">{unitFor(name)}</span>
+      {device.lastSeen !== null && (
+        <div className="stats stats-strip">
+          {Object.entries(device.latest).map(([name, value]) => (
+            <div key={name} className="stat">
+              <div className="label">{name.toUpperCase()}</div>
+              <div className={stale ? 'stat-value stat-value-lg dim' : 'stat-value stat-value-lg'}>
+                {formatValue(name, value)}
+                <span className="unit">{unitFor(name)}</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="detail-grid">
         <section className="panel">
